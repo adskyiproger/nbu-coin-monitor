@@ -11,6 +11,6 @@ services:
       - ./data:/app/data
     command: >
       sh -c "while true; do
-        python3 coins_monitor.py;
+        python3 main.py;
         sleep ${CHECK_INTERVAL:-300};
       done"
