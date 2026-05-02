@@ -1,0 +1,16 @@
+services:
+  nbu-coins-monitor:
+    build: .
+    container_name: nbu-coins-monitor
+    restart: unless-stopped
+    environment:
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
+      TELEGRAM_CHAT_IDS: ${TELEGRAM_CHAT_IDS}
+      STATE_FILE: data/seen_products.json
+    volumes:
+      - ./data:/app/data
+    command: >
+      sh -c "while true; do
+        python3 coins_monitor.py;
+        sleep ${CHECK_INTERVAL:-300};
+      done"
