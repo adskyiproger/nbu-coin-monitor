@@ -13,6 +13,7 @@ from playwright.sync_api import sync_playwright
 
 CATALOG_URL = "https://coins.bank.gov.ua/catalog.html"
 STATE_FILE = os.environ.get("STATE_FILE", "data/seen_products.json")
+CHECK_INTERVAL = int(os.environ.get("CHECK_INTERVAL", "300"))
 
 BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN")
 CHAT_IDS = [
@@ -184,8 +185,11 @@ def main():
 
 
 if __name__ == "__main__":
-    try:
-        main()
-    except Exception as e:
-        print(f"Помилка: {e}", file=sys.stderr)
-        sys.exit(1)
+    while True:
+        try:
+            main()
+        except Exception as e:
+            print(f"Помилка: {e}", file=sys.stderr)
+
+        print(f"Наступна перевірка через {CHECK_INTERVAL} сек.")
+        time.sleep(CHECK_INTERVAL)

@@ -16,14 +16,15 @@
 * Відстеження нових товарів
 * Збереження стану (щоб не дублювати повідомлення)
 * Підтримка кількох Telegram чатів
-* Простий запуск через cron
+* Вбудований нескінченний цикл перевірки (без cron)
 
 ---
 
 ## 📦 Встановлення
 
 ```bash
-pip install requests beautifulsoup4
+pip install -r requirements.txt
+playwright install chromium
 ```
 
 ---
@@ -55,6 +56,7 @@ https://api.telegram.org/bot<BOT_TOKEN>/getUpdates
 ```bash
 export TELEGRAM_BOT_TOKEN="your_token"
 export TELEGRAM_CHAT_IDS="123456789,987654321"
+export CHECK_INTERVAL=300
 ```
 
 ---
@@ -62,18 +64,11 @@ export TELEGRAM_CHAT_IDS="123456789,987654321"
 # ▶️ Запуск локально
 
 ```bash
-python3 coins_monitor.py
+python3 main.py
 ```
 
----
+Скрипт сам працює у нескінченному циклі: виконує перевірку, чекає `CHECK_INTERVAL` секунд (за замовчуванням 300) і повторює знову. Щоб зупинити — `Ctrl+C`.
 
-## 🔁 Автоматичний запуск (cron)
-
-Перевірка кожні 5 хвилин:
-
-```bash
-*/5 * * * * /usr/bin/python3 /path/to/coins_monitor.py >> /path/to/log.log 2>&1
-```
 ---
 
 ## 🐳 Запуск через Docker Compose
@@ -155,7 +150,7 @@ docker compose down -v
 
 * Переконайся, що бот у Telegram має доступ до чату
 * Якщо не приходять повідомлення — перевір `.env`
-* Не став дуже малий `CHECK_INTERVAL` (рекомендовано ≥ 60 сек)
+* Не став дуже малий `CHECK_INTERVAL` (рекомендовано ≥ 43200 сек / 12 годин)
 
 ---
 
@@ -198,7 +193,6 @@ docker compose down -v
 * 📦 Batch відправка (альбоми)
 * 🔔 Фільтрація по ключових словах
 * 🧠 Визначення змін статусу товару
-* 🐳 Docker контейнер
 * ☁️ Деплой як сервіс
 
 ---
