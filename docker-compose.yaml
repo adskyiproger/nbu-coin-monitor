@@ -1,6 +1,7 @@
 services:
   nbu-coins-monitor:
     build: .
+    image: ghcr.io/adskyiproger/nbu-coin-monitor:latest
     container_name: nbu-coins-monitor
     restart: unless-stopped
     environment:
