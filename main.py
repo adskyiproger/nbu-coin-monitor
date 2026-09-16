@@ -8,6 +8,7 @@ from urllib.parse import urljoin
 
 import requests
 from bs4 import BeautifulSoup
+from playwright.sync_api import sync_playwright
 
 
 CATALOG_URL = "https://coins.bank.gov.ua/catalog.html"
@@ -38,7 +39,7 @@ def send_telegram_product(product, chat_id):
 
     response = requests.post(url, data=data, timeout=10)
     response.raise_for_status()
-    
+
 
 def load_seen_products():
     if not os.path.exists(STATE_FILE):
@@ -49,18 +50,66 @@ def load_seen_products():
 
 
 def save_seen_products(products):
+    os.makedirs(os.path.dirname(STATE_FILE) or ".", exist_ok=True)
+
     with open(STATE_FILE, "w", encoding="utf-8") as f:
         json.dump(products, f, ensure_ascii=False, indent=2)
 
 
 def fetch_catalog():
-    headers = {
-        "User-Agent": "Mozilla/5.0 (compatible; coins-monitor/1.0)"
-    }
+    with sync_playwright() as p:
+        browser = p.chromium.launch(
+            executable_path="/usr/bin/chromium",
+            headless=True,
+            args=[
+                "--disable-dev-shm-usage",
+                "--no-sandbox",
+            ],
+        )
 
-    response = requests.get(CATALOG_URL, headers=headers, timeout=20)
-    response.raise_for_status()
-    return response.text
+        context = browser.new_context(
+            user_agent=(
+                "Mozilla/5.0 (X11; Linux armv7l) "
+                "AppleWebKit/537.36 (KHTML, like Gecko) "
+                "Chrome/140.0.0.0 Safari/537.36"
+            ),
+            locale="uk-UA",
+        )
+
+        page = context.new_page()
+
+        try:
+            print(f"Відкриваю {CATALOG_URL}...")
+
+            response = page.goto(
+                CATALOG_URL,
+                wait_until="domcontentloaded",
+                timeout=60_000,
+            )
+
+            if response is None:
+                raise RuntimeError("No response received from catalog")
+
+            print(f"HTTP status: {response.status}")
+
+            if response.status >= 400:
+                raise RuntimeError(
+                    f"Catalog returned HTTP {response.status}"
+                )
+
+            # Give BunnyCDN/browser challenge time to complete.
+            page.wait_for_timeout(5_000)
+
+            # Wait until product blocks appear.
+            page.wait_for_selector(
+                "a.p_img_href",
+                timeout=30_000,
+            )
+
+            return page.content()
+
+        finally:
+            browser.close()
 
 
 def parse_products(html):
@@ -72,17 +121,23 @@ def parse_products(html):
     for link in soup.find_all("a", class_="p_img_href"):
         href = link.get("href")
         img = link.find("img")
-        
+
         if not href or not img:
             continue
 
-        image = img.get("data-hover") or img.get("data-src") or img.get("src")
+        image = (
+            img.get("data-hover")
+            or img.get("data-src")
+            or img.get("src")
+        )
+
         title = img.get("alt", "").strip()
-        
+
         if not image:
             continue
 
         url = urljoin(CATALOG_URL, href)
+        image = urljoin(CATALOG_URL, image)
 
         products[url] = {
             "title": title,
@@ -99,6 +154,8 @@ def main():
     html = fetch_catalog()
     current_products = parse_products(html)
 
+    print(f"Знайдено товарів у каталозі: {len(current_products)}")
+
     new_products = {
         url: product
         for url, product in current_products.items()
@@ -111,12 +168,17 @@ def main():
         print(f"Знайдено нових товарів: {len(new_products)}\n")
 
         for product in new_products.values():
-            # print(f"- {product['title']}")
-            # print(f"  {product['url']}")
-            # print(f"  {product['image']}")
+            print(f"- {product['title']}")
+            print(f"  {product['url']}")
+            print(f"  {product['image']}")
+
             for chat_id in CHAT_IDS:
-                send_telegram_product(product=product, chat_id=chat_id)
+                # send_telegram_product(
+                #     product=product,
+                #     chat_id=chat_id,
+                # )
                 time.sleep(10)
+
     # Оновлюємо локальну базу після перевірки
     save_seen_products(current_products)
 
