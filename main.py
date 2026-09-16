@@ -173,10 +173,10 @@ def main():
             print(f"  {product['image']}")
 
             for chat_id in CHAT_IDS:
-                # send_telegram_product(
-                #     product=product,
-                #     chat_id=chat_id,
-                # )
+                send_telegram_product(
+                    product=product,
+                    chat_id=chat_id,
+                )
                 time.sleep(10)
 
     # Оновлюємо локальну базу після перевірки
